@@ -1,6 +1,4 @@
-
 '''
-
     Sokoban assignment
 
 
@@ -26,14 +24,8 @@ Last modified by 2021-08-17  by f.maire@qut.edu.au
 
 '''
 
-# You have to make sure that your code works with 
-# the files provided (search.py and sokoban.py) as your code will be tested 
-# with these files
 import search 
 import sokoban
-
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
 def my_team():
@@ -43,9 +35,6 @@ def my_team():
     
     '''
     return [ (11036583, 'Shangzhe', 'Lin'), (10335838, 'Mitchell', 'Hosking'), (11285672, 'Aaron', 'Halangoda') ]
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 
 def taboo_cells(warehouse):
     '''  
@@ -71,7 +60,24 @@ def taboo_cells(warehouse):
         The returned string should NOT have marks for the worker, the targets,
         and the boxes.  
     '''
-    ##         "INSERT YOUR CODE HERE"    
+    def _is_corner_cell(x, y, vis, x_size, y_size):
+        """Check if a cell is a corner based on adjacent walls.
+
+        Args:
+            x, y: Coordinates of the cell to check
+            vis: 2D array representing the warehouse visualization
+            x_size, y_size: Dimensions of the warehouse
+
+        Returns:
+            bool: True if the cell is a corner, False otherwise
+        """
+        return any([
+            y > 0 and x > 0 and vis[y - 1][x] == "#" and vis[y][x - 1] == "#",
+            y > 0 and x < x_size - 1 and vis[y - 1][x] == "#" and vis[y][x + 1] == "#",
+            y < y_size - 1 and x > 0 and vis[y + 1][x] == "#" and vis[y][x - 1] == "#",
+            y < y_size - 1 and x < x_size - 1 and vis[y + 1][x] == "#" and vis[y][x + 1] == "#"
+        ])
+
     X, Y = zip(*warehouse.walls)
     x_size, y_size = 1 + max(X), 1 + max(Y)
 
@@ -88,23 +94,12 @@ def taboo_cells(warehouse):
                 if first_wall_x == -1:
                     first_wall_x = x
                 last_wall_x = x
-        if first_wall_x != -1: # There is a wall in this row
+        if first_wall_x != -1:
             for x in range(first_wall_x + 1, last_wall_x):
-                if vis[y][x] == " ":  # Only check cells that are not walls
-                    # Rule 1: corner and not target
-                    is_corner = False
-                    if y > 0 and x > 0 and vis[y - 1][x] == "#" and vis[y][x - 1] == "#":
-                        is_corner = True
-                    if y > 0 and x < x_size - 1 and vis[y - 1][x] == "#" and vis[y][x + 1] == "#":
-                        is_corner = True
-                    if y < y_size - 1 and x > 0 and vis[y + 1][x] == "#" and vis[y][x - 1] == "#":
-                        is_corner = True
-                    if y < y_size - 1 and x < x_size - 1 and vis[y + 1][x] == "#" and vis[y][x + 1] == "#":
-                        is_corner = True
-                    if is_corner and (x, y) not in warehouse.targets:
+                if vis[y][x] == " ":
+                    if _is_corner_cell(x, y, vis, x_size, y_size) and (x, y) not in warehouse.targets:
                         taboo.add((x, y))
-
-    for x in range(x_size):
+        for x in range(x_size):
         first_wall_y = -1
         last_wall_y = -1
         for y in range(y_size):
@@ -115,7 +110,6 @@ def taboo_cells(warehouse):
         if first_wall_y != -1:
             for y in range(first_wall_y + 1, last_wall_y):
                 if vis[y][x] == " ":
-                    # Rule 2: cells between two corners along a wall
                     corners_in_column = []
                     for yy in range(y_size):
                         if (x,yy) in taboo:
@@ -146,45 +140,102 @@ def taboo_cells(warehouse):
             result += "\n"
     return result
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 
 class SokobanPuzzle(search.Problem):
     '''
     An instance of the class 'SokobanPuzzle' represents a Sokoban puzzle.
     An instance contains information about the walls, the targets, the boxes
     and the worker.
-
-    Your implementation should be fully compatible with the search functions of 
-    the provided module 'search.py'. 
     
+    Your implementation should be fully compatible with the search functions of
+    the provided module 'search.py'.
     '''
     
-    #
-    #         "INSERT YOUR CODE HERE"
-    #
-    #     Revisit the sliding puzzle and the pancake puzzle for inspiration!
-    #
-    #     Note that you will need to add several functions to 
-    #     complete this class. For example, a 'result' method is needed
-    #     to satisfy the interface of 'search.Problem'.
-    #
-    #     You are allowed (and encouraged) to use auxiliary functions and classes
-
-    
     def __init__(self, warehouse):
-        raise NotImplementedError()
+    raise NotImplementedError()
 
     def actions(self, state):
         """
         Return the list of actions that can be executed in the given state.
-        
+
         """
         raise NotImplementedError
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 def check_elem_action_seq(warehouse, action_seq):
+    '''
+
+    Determine if the sequence of actions listed in 'action_seq' is legal or not.
+
+    Important notes:
+      - a legal sequence of actions does not necessarily solve the puzzle.
+      - an action is legal even if it pushes a box onto a taboo cell.
+    @param warehouse: a valid Warehouse object
+
+    @param action_seq: a sequence of legal actions.
+            For example, ['Left', 'Down', Down','Right', 'Up', 'Down']
+
+    @return
+        The string 'Impossible', if one of the action was not valid.
+           For example, if the agent tries to push two boxes at the same time,
+                        or push a box into a wall.
+        Otherwise, if all actions were successful, return
+               A string representing the state of the puzzle after applying
+               the sequence of actions.  This must be the same string as the
+               string returned by the method  Warehouse.__str__()
+    '''
+    
+    raise NotImplementedError()
+
+
+def solve_weighted_sokoban(warehouse):
+    '''
+    This function analyses the given warehouse.
+    It returns the two items. The first item is an action sequence solution.
+    The second item is the total cost of this action sequence.
+
+    @param
+     warehouse: a valid Warehouse object
+
+    @return
+
+        If puzzle cannot be solved
+            return 'Impossible', None
+
+        If a solution was found,
+            return S, C
+            where S is a list of actions that solves
+            the given puzzle coded with 'Left', 'Right', 'Up', 'Down'
+            For example, ['Left', 'Down', Down','Right', 'Up', 'Down']
+            If the puzzle is already in a goal state, simply return []
+            C is the total cost of the action sequence C
+
+    '''
+
+    raise NotImplementedError()
+                            if (x,yy) in warehouse.targets:
+                                all_clear = False
+                                break
+                        if all_clear:
+                            for yy in range(start_y + 1, end_y):
+                                taboo.add((x,yy))
+
+    for (x, y) in taboo:
+        vis[y][x] = "X"
+
+    result = ""
+    for y in range(y_size):
+        for x in range(x_size):
+            if vis[y][x] == "#" or vis[y][x] == "X":
+                result += vis[y][x]
+            else:
+                result += " "
+        if y < y_size - 1:
+            result += "\n"
+    return result
+
+
+class SokobanPuzzle(search.Problem):
     '''
     
     Determine if the sequence of actions listed in 'action_seq' is legal or not.
@@ -206,9 +257,9 @@ def check_elem_action_seq(warehouse, action_seq):
                A string representing the state of the puzzle after applying
                the sequence of actions.  This must be the same string as the
                string returned by the method  Warehouse.__str__()
+    Your implementation should be fully compatible with the search functions of
+    the provided module 'search.py'.
     '''
-    
-    ##         "INSERT YOUR CODE HERE"
     
     raise NotImplementedError()
 
@@ -216,6 +267,11 @@ def check_elem_action_seq(warehouse, action_seq):
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 def solve_weighted_sokoban(warehouse):
+        """
+        raise NotImplementedError
+
+
+def check_elem_action_seq(warehouse, action_seq):
     '''
     This function analyses the given warehouse.
     It returns the two items. The first item is an action sequence solution. 
@@ -223,6 +279,13 @@ def solve_weighted_sokoban(warehouse):
     
     @param 
      warehouse: a valid Warehouse object
+
+    Determine if the sequence of actions listed in 'action_seq' is legal or not.
+
+    Important notes:
+      - a legal sequence of actions does not necessarily solve the puzzle.
+      - an action is legal even if it pushes a box onto a taboo cell.
+    @param warehouse: a valid Warehouse object
 
     @return
     
@@ -233,10 +296,20 @@ def solve_weighted_sokoban(warehouse):
             return S, C 
             where S is a list of actions that solves
             the given puzzle coded with 'Left', 'Right', 'Up', 'Down'
+    @param action_seq: a sequence of legal actions.
             For example, ['Left', 'Down', Down','Right', 'Up', 'Down']
             If the puzzle is already in a goal state, simply return []
             C is the total cost of the action sequence C
 
+
+    @return
+        The string 'Impossible', if one of the action was not valid.
+           For example, if the agent tries to push two boxes at the same time,
+                        or push a box into a wall.
+        Otherwise, if all actions were successful, return
+               A string representing the state of the puzzle after applying
+               the sequence of actions.  This must be the same string as the
+               string returned by the method  Warehouse.__str__()
     '''
     
     raise NotImplementedError()
@@ -244,3 +317,28 @@ def solve_weighted_sokoban(warehouse):
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+def solve_weighted_sokoban(warehouse):
+    '''
+    This function analyses the given warehouse.
+    It returns the two items. The first item is an action sequence solution.
+    The second item is the total cost of this action sequence.
+
+    @param
+     warehouse: a valid Warehouse object
+
+    @return
+
+        If puzzle cannot be solved
+            return 'Impossible', None
+
+        If a solution was found,
+            return S, C
+            where S is a list of actions that solves
+            the given puzzle coded with 'Left', 'Right', 'Up', 'Down'
+            For example, ['Left', 'Down', Down','Right', 'Up', 'Down']
+            If the puzzle is already in a goal state, simply return []
+            C is the total cost of the action sequence C
+
+    '''
+
+    raise NotImplementedError()
